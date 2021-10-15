@@ -16,9 +16,13 @@ import time
 from collections import defaultdict
 import pickle
 output_dir = "./output/"
+partial_dir = "./partial_data"
 fold_out = Path(output_dir)
+fold_partial = Path(partial_dir)
 if not fold_out.exists():
     fold_out.mkdir(parents=True)
+if not fold_partial.exists():
+    fold_partial.mkdir(parents=True)
 reload(log)
 logger = log.setup_logger()
 N=5000 #Number of individuals 50000
@@ -34,7 +38,7 @@ num_test_random = 0 #number of random tests per day
 num_test_algo = 200 #number of tests using by the ranker per day
 fp_rate = 0.0 #test false-positive rate
 fn_rate = 0.0 #test false-negative rate
-n_repeats = 2
+n_repeats = 3
 delays = [1, 3] # test delayed MF with a delays from 1 to max_delay days
 prob_seed = 1/N
 prob_sus = 0.55
