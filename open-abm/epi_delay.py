@@ -47,7 +47,7 @@ fp_rate = 0.0 #test false-positive rate
 fn_rate = 0.0 #test false-negative rate
 
 n_repeats = 3
-delays = [1, 3, 5] # test delayed MF with a delays from 1 to max_delay days
+delays = [1, 3] # test delayed MF with a delays from 1 to max_delay days
 
 prob_seed = 1/N
 prob_sus = 0.55
