@@ -58,15 +58,14 @@ pautoinf = 1/N
 rankers = {
     "RG": dotd_rank.DotdRanker(),
 
-'''
-    "MF": mean_field_rank.MeanFieldRanker(
-        tau=5,
-        delta=10,
-        mu=1 / 30,
-        lamb=0.014,
-        delay=0
-    ),
-'''
+    #"MF": mean_field_rank.MeanFieldRanker(
+    #    tau=5,
+    #    delta=10,
+    #    mu=1 / 30,
+    #    lamb=0.014,
+    #    delay=0
+    #),
+
 
     "CT": tracing_rank.TracingRanker(
         tau=5,
