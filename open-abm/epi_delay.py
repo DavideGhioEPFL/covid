@@ -31,8 +31,8 @@ logger = log.setup_logger()
 
 
 
-N=5000 #Number of individuals 50000
-T=15 #Total time of simulations  100
+N=50000 #Number of individuals 50000
+T=100 #Total time of simulations  100
 n_seed_infection = 10 #number of patient zero
 
 fraction_SM_obs = 0.5 #fraction of Symptomatic Mild tested positive
@@ -46,8 +46,8 @@ num_test_algo = int(sys.argv[1]) #number of tests using by the ranker per day
 fp_rate = 0.0 #test false-positive rate
 fn_rate = 0.0 #test false-negative rate
 
-n_repeats = 2
-delays = [1] # test delayed MF with a delays from 1 to max_delay days
+n_repeats = 3
+delays = [1, 3, 5] # test delayed MF with a delays from 1 to max_delay days
 
 prob_seed = 1/N
 prob_sus = 0.55
