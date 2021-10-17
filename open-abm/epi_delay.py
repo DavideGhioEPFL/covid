@@ -87,7 +87,7 @@ _delayed_MF_rankers = {
 rankers.update(_delayed_MF_rankers)
 '''
 _delayed_CT_rankers = {
-    f"CT-D{d}": mean_field_rank.MeanFieldRanker(
+    f"CT-D{d}": tracing_rank.TracingRanker(
         tau = 5,
         lamb = 0.014,
         delay = d)
