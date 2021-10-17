@@ -56,7 +56,7 @@ psus = prob_sus * (1 - pseed)
 pautoinf = 1/N
 
 rankers = {
-    "RG": dotd_rank.DotdRanker()
+    "RG": dotd_rank.DotdRanker(),
 
 '''
     "MF": mean_field_rank.MeanFieldRanker(
