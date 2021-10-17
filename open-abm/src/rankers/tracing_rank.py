@@ -10,7 +10,7 @@ def csr_to_list(x):
     return zip(x_coo.row, x_coo.col, x_coo.data)
 
 
-def ranking_tracing(t, transmissions, observations, tau):
+def ranking_tracing(t, transmissions, observations, tau, delay=0):
     """Naive contact tracing.
 
     Search for all individuals that have been in contact during [t-tau, t]
@@ -26,7 +26,7 @@ def ranking_tracing(t, transmissions, observations, tau):
     # last_tested : observations s=I for t-tau <= t_test < t
     last_tested = set(
         obs["i"] for obs in observations
-        if obs["s"] == 1 and (t - tau <= obs["t_test"]) and (obs["t_test"] < t)
+        if obs["s"] == 1 and (t - tau <= obs["t_test"]) and (obs["t_test"] < t-delay)
     )
     # contacts with last_tested people during [t - tau, t]
     contacts = pd.DataFrame(
@@ -48,12 +48,13 @@ def ranking_tracing(t, transmissions, observations, tau):
 
 class TracingRanker(AbstractRanker):
 
-    def __init__(self, tau, lamb):
+    def __init__(self, tau, lamb,delay=0):
         self.description = "class for naive contact tracing of openABM loop."
         self.author = "https://github.com/sphinxteam"
         self.tau = tau
         self.lamb = lamb
         self.rng = np.random.RandomState(np.random.randint(1000))
+        self.delay = delay
 
     def init(self, N, T):
         self.transmissions = []
@@ -77,7 +78,7 @@ class TracingRanker(AbstractRanker):
         ]
         # scores given by mean field run from t-delta to t
         scores = ranking_tracing(
-            t_day, self.transmissions, self.observations, self.tau
+            t_day, self.transmissions, self.observations, self.tau, delay=self.delay
         )
         # convert to list [(index, value), ...]
         rank = get_rank(scores)

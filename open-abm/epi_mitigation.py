@@ -1,4 +1,5 @@
 import numpy as np
+
 import sys
 sys.path.insert(0,'./src/')
 sib_folder = "../sib" # sib path
@@ -9,25 +10,34 @@ from pathlib import Path
 import log, logging
 from importlib import reload
 import loop_abm, abm_utils, scipy
-from rankers import dotd_rank, tracing_rank, mean_field_rank
-import matplotlib.pyplot as plt
-import plot_utils
-import time
-from collections import defaultdict
-import pickle
+
+#logging
 output_dir = "./output/"
-partial_dir = "./partial_data"
 fold_out = Path(output_dir)
-fold_partial = Path(partial_dir)
 if not fold_out.exists():
     fold_out.mkdir(parents=True)
-if not fold_partial.exists():
-    fold_partial.mkdir(parents=True)
+
 reload(log)
 logger = log.setup_logger()
+
+num_threads = 40 #number of threads used for sib
+
+
+
 N=5000 #Number of individuals 50000
-T=15 #Total time of simulations  100
+T=20 #Total time of simulations  100
+seed = np.random.randint(1000) #seed of the random number generator
 n_seed_infection = 10 #number of patient zero
+
+params_model = {
+    "rng_seed" : seed,
+    "end_time" : T,
+    "n_total"  : N,
+    "days_of_interactions" : T,
+    "n_seed_infection" : n_seed_infection,
+}
+
+
 fraction_SM_obs = 0.5 #fraction of Symptomatic Mild tested positive
 fraction_SS_obs = 1 #fraction of Symptomatic Severe tested positive
 initial_steps = 12 #starting time of intervention
@@ -38,82 +48,119 @@ num_test_random = 0 #number of random tests per day
 num_test_algo = 200 #number of tests using by the ranker per day
 fp_rate = 0.0 #test false-positive rate
 fn_rate = 0.0 #test false-negative rate
-n_repeats = 3
-delays = [1, 3] # test delayed MF with a delays from 1 to max_delay days
+n_repeats = 2
+
+from rankers import dotd_rank, tracing_rank, mean_field_rank
+
+
 prob_seed = 1/N
 prob_sus = 0.55
 pseed = prob_seed / (2 - prob_seed)
 psus = prob_sus * (1 - pseed)
 pautoinf = 1/N
+
+
+dotd = dotd_rank.DotdRanker()
+
+
+tracing = tracing_rank.TracingRanker(
+                 tau=5,
+                 lamb=0.014
+)
+
+MF = mean_field_rank.MeanFieldRanker(
+                tau = 5,
+                delta = 10,
+                mu = 1/30,
+                lamb = 0.014,
+                delay = 0
+                )
+
+ress = {}
+
 rankers = {
-    "MF": mean_field_rank.MeanFieldRanker(
+    # "RG" : dotd,
+    "CT": tracing,
+    "MF": MF
+}
+
+import matplotlib.pyplot as plt
+import plot_utils
+import time
+
+import imp
+imp.reload(loop_abm)
+
+repeats = []
+for i in range(n_repeats):
+    tracing = tracing_rank.TracingRanker(
+        tau=5,
+        lamb=0.014
+    )
+
+    MF = mean_field_rank.MeanFieldRanker(
         tau=5,
         delta=10,
         mu=1 / 30,
         lamb=0.014,
         delay=0
-    ),
-    "CT": tracing_rank.TracingRanker(
-        tau=5,
-        lamb=0.014
     )
-}
-_delayed_MF_rankers = {
-    f"MF-D{d}": mean_field_rank.MeanFieldRanker(
+    rankers = {
+        # "RG" : dotd,
+        #"CT": tracing,
+        "MF": MF
+    }
+    '''
+    rankers.update({f"MF-D{i}": mean_field_rank.MeanFieldRanker(
         tau = 5,
         delta = 10,
         mu = 1/30,
         lamb = 0.014,
-        delay = d)
-    for d in delays
-}
-rankers.update(_delayed_MF_rankers)
-repeats = []
-for i in range(n_repeats):
-    seed = np.random.randint(10000)
-    repeat = defaultdict(list)
-    for s, ranker in rankers.items():
-        params_model = {
-            "rng_seed": seed,
-            "end_time": T,
-            "n_total": N,
-            "days_of_interactions": T,
-            "n_seed_infection": n_seed_infection,
-        }
-        plots = plot_utils.plot_style(N, T)
-        save_path_fig = f"./output/plot_run_N_{N}_SM_{fraction_SM_obs}_test_{num_test_algo}_n_seed_infection_{n_seed_infection}_seed_{seed}_fp_{fp_rate}_fn_{fn_rate}.png"
-        fig, callback = plot_utils.plotgrid(rankers, plots, initial_steps, save_path=save_path_fig)
-        data = {"algo": s}
+        delay = i) for i in range(1, 2)})
+    '''
+
+    plots = plot_utils.plot_style(N, T)
+    save_path_fig = f"./output/plot_run_N_{N}_SM_{fraction_SM_obs}_test_{num_test_algo}_n_seed_infection_{n_seed_infection}_seed_{seed}_fp_{fp_rate}_fn_{fn_rate}.png"
+    fig, callback = plot_utils.plotgrid(rankers, plots, initial_steps, save_path=save_path_fig)
+
+    for s in rankers:
+        new_seed = np.random.randint(1000)
+        params_model['rng_seed'] = new_seed
+        data = {"algo":s}
+        imp.reload(loop_abm)
         loop_abm.loop_abm(
             params_model,
-            ranker,
-            seed=seed,
-            logger=logging.getLogger(f"iteration.{s}"),
-            data=data,
-            callback=callback,
-            initial_steps=initial_steps,
-            num_test_random=num_test_random,
-            num_test_algo=num_test_algo,
-            fraction_SM_obs=fraction_SM_obs,
-            fraction_SS_obs=fraction_SS_obs,
-            quarantine_HH=quarantine_HH,
-            test_HH=test_HH,
-            adoption_fraction=adoption_fraction,
-            fp_rate=fp_rate,
-            fn_rate=fn_rate,
-            name_file_res= s + f"_N_{N}_T_{T}_obs_{num_test_algo}_SM_obs_{fraction_SM_obs}_seed_{seed}"
+            rankers[s],
+            seed=new_seed,
+            logger = logging.getLogger(f"iteration.{s}"),
+            data = data,
+            callback = callback,
+            initial_steps = initial_steps,
+            num_test_random = num_test_random,
+            num_test_algo = num_test_algo,
+            fraction_SM_obs = fraction_SM_obs,
+            fraction_SS_obs = fraction_SS_obs,
+            quarantine_HH = quarantine_HH,
+            test_HH = test_HH,
+            adoption_fraction = adoption_fraction,
+            fp_rate = fp_rate,
+            fn_rate = fn_rate,
+            name_file_res = s + f"_N_{N}_T_{T}_obs_{num_test_algo}_SM_obs_{fraction_SM_obs}_seed_{seed}"
         )
-        repeat[s] = data
-        with open(f"partial_data/{s}_{i}.pkl", "wb+") as f_out:
-            f_out.write(pickle.dumps(data))
-    repeats.append(repeat)
-to_plot = 'I'
+        ress[s] = data
+        # saves a bit of memory: rankers[s] = {}
+    repeats.append(ress)
+
+
 plt.clf()
-for i, s in enumerate(rankers.keys()):
-    avg = np.mean([r[s][to_plot] for r in repeats], axis=0)
-    plt.plot(avg, label=s, color=plt.cm.Set1(i), linewidth=1)
-    for r in repeats:
-        plt.plot(r[s][to_plot], color=plt.cm.Pastel1(i), alpha=0.7, linewidth=0.5)
+to_plot = "I"
+for i, s in enumerate(repeats[0].keys()):
+    avg = np.mean([ress[s][to_plot] for ress in repeats], axis=0)
+    plt.plot(avg, label = s, color=plt.cm.Set1(i))
+    for ress in repeats:
+        print(ress[s][to_plot])
+        plt.plot(ress[s][to_plot], color=plt.cm.Pastel1(i))
+
 plt.semilogy()
 plt.ylabel("Infected")
 plt.xlabel("days")
